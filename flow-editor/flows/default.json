@@ -1,0 +1,20 @@
+{
+  "name": "default",
+  "nodes": [
+    { "id": "start", "type": "start", "label": "Inicio", "x": 60, "y": 260, "params": {} },
+    { "id": "c_premium", "type": "condition", "subtype": "prefix", "label": "Numeros premium 905", "x": 280, "y": 240, "params": { "value": "905" } },
+    { "id": "r_block", "type": "reject", "label": "Bloquear premium", "x": 580, "y": 80, "params": { "code": 403, "reason": "Destino bloqueado" } },
+    { "id": "c_intl", "type": "condition", "subtype": "prefix", "label": "Internacional 00", "x": 580, "y": 320, "params": { "value": "00" } },
+    { "id": "a_strip", "type": "action", "subtype": "strip", "label": "Quitar 00", "x": 880, "y": 220, "params": { "count": 2 } },
+    { "id": "d_carriers", "type": "dispatcher", "label": "Carriers internacionales", "x": 1150, "y": 220, "params": { "setid": 1, "algorithm": "4" } },
+    { "id": "d_local", "type": "dispatcher", "label": "PBX local", "x": 880, "y": 460, "params": { "setid": 2, "algorithm": "4" } }
+  ],
+  "edges": [
+    { "from": "start", "fromPort": "out", "to": "c_premium" },
+    { "from": "c_premium", "fromPort": "true", "to": "r_block" },
+    { "from": "c_premium", "fromPort": "false", "to": "c_intl" },
+    { "from": "c_intl", "fromPort": "true", "to": "a_strip" },
+    { "from": "c_intl", "fromPort": "false", "to": "d_local" },
+    { "from": "a_strip", "fromPort": "out", "to": "d_carriers" }
+  ]
+}

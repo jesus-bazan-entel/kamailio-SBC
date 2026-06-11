@@ -1,0 +1,22 @@
+# =====================================================================
+#  dispatcher.list - grupos de destinos para balanceo de carga
+# =====================================================================
+#  Formato:  setid destino flags prioridad atributos
+#
+#    setid     : numero de grupo (lo seleccionas en el nodo
+#                "Balanceador" del Flow Editor)
+#    destino   : URI SIP del gateway / proxy / PBX
+#    flags     : 0 = activo
+#    prioridad : mayor = preferido (segun algoritmo)
+#    atributos : ej. weight=50 para algoritmo por peso
+#
+#  Tras editar este archivo: kamcmd dispatcher.reload
+#  (o reiniciar el contenedor)
+# =====================================================================
+
+# --- Grupo 1: carriers de salida (internacional) ---
+1 sip:10.10.0.10:5060 0 10 weight=50
+1 sip:10.10.0.11:5060 0 10 weight=50
+
+# --- Grupo 2: PBX / destinos locales ---
+2 sip:10.20.0.10:5060 0 10

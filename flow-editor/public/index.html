@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kamailio Flow Editor — Enrutamiento SIP visual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand">⚡ Kamailio <span>Flow Editor</span></div>
+    <div class="flow-controls">
+      <label for="flow-select">Flujo:</label>
+      <select id="flow-select"></select>
+      <button id="btn-new" title="Crear un flujo nuevo">＋ Nuevo</button>
+      <button id="btn-save" class="primary" title="Guardar el flujo actual">💾 Guardar</button>
+      <button id="btn-preview" title="Ver la configuración Kamailio generada">⚙ Ver config</button>
+      <button id="btn-deploy" class="deploy" title="Compilar y aplicar en Kamailio">🚀 Desplegar</button>
+    </div>
+    <div id="kam-status" class="status offline">Kamailio: conectando…</div>
+  </header>
+
+  <main>
+    <aside id="palette">
+      <h3>Nodos</h3>
+      <div class="palette-hint">Haz clic para añadir al lienzo. Arrastra desde un punto de salida ● hasta la entrada de otro nodo para conectar.</div>
+      <div id="palette-items"></div>
+    </aside>
+
+    <section id="viewport">
+      <div id="canvas">
+        <svg id="edges"></svg>
+        <div id="nodes"></div>
+      </div>
+    </section>
+
+    <aside id="props">
+      <h3>Propiedades</h3>
+      <div id="props-body" class="props-empty">Selecciona un nodo para editar sus parámetros.</div>
+      <div id="props-actions"></div>
+    </aside>
+  </main>
+
+  <section id="calls-panel">
+    <div class="calls-header">
+      <h3>📞 Llamadas activas <span id="calls-count"></span></h3>
+      <span class="calls-hint">se actualiza cada 5 s vía RPC de Kamailio</span>
+    </div>
+    <table id="calls-table">
+      <thead>
+        <tr><th>Call-ID</th><th>Origen</th><th>Destino</th><th>Estado</th><th>Duración</th></tr>
+      </thead>
+      <tbody id="calls-body">
+        <tr><td colspan="5" class="muted">sin datos</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div id="modal" class="hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="modal-title">Configuración generada</h3>
+        <button id="modal-close">✕</button>
+      </div>
+      <pre id="modal-content"></pre>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

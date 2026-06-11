@@ -1,0 +1,47 @@
+services:
+
+  kamailio:
+    build: ./kamailio
+    container_name: kamailio-sbc
+    restart: unless-stopped
+    ports:
+      - "5060:5060/udp"   # SIP UDP
+      - "5060:5060/tcp"   # SIP TCP
+      # 5080 (RPC HTTP) NO se publica: solo accesible en la red interna
+    volumes:
+      - flow-config:/etc/kamailio/flow
+    environment:
+      SHM_MEM: "256"        # memoria compartida (MB)
+      PKG_MEM: "16"         # memoria por proceso (MB)
+      WATCH_INTERVAL: "5"   # segundos entre chequeos del flujo desplegado
+    networks:
+      - sbc
+    # En produccion, para SIP/RTP suele ser preferible red de host:
+    #   network_mode: host
+    # (y entonces eliminar ports/networks de este servicio)
+
+  flow-editor:
+    build: ./flow-editor
+    container_name: kamailio-flow-editor
+    restart: unless-stopped
+    ports:
+      - "8088:8088"         # interfaz web del editor
+    volumes:
+      - flow-config:/shared
+      - flow-data:/app/flows
+    environment:
+      PORT: "8088"
+      FLOW_CFG_PATH: /shared/flow-routing.cfg
+      KAMAILIO_RPC_URL: http://kamailio:5080/RPC
+    networks:
+      - sbc
+    depends_on:
+      - kamailio
+
+volumes:
+  flow-config:   # flow-routing.cfg compartido editor -> kamailio
+  flow-data:     # flujos JSON guardados
+
+networks:
+  sbc:
+    driver: bridge
