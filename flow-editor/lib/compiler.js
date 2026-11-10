@@ -178,13 +178,14 @@ function emitNode(n, gotoOr, errors) {
 
   switch (n.type) {
     case 'start':
-      return gotoOr(n.id, 'out') || '\t# sin conexion de salida\n';
+      // un bloque route[] no puede quedar vacio (solo comentarios): return;
+      return gotoOr(n.id, 'out') || '\t# sin conexion de salida\n\treturn;\n';
 
     case 'condition': {
       const expr = conditionExpr(n, p, where, errors);
       const t = gotoOr(n.id, 'true');
       const f = gotoOr(n.id, 'false');
-      if (!t && !f) return '\t# condicion sin ramas conectadas\n';
+      if (!t && !f) return '\t# condicion sin ramas conectadas\n\treturn;\n';
       if (t && f) return `\tif (${expr}) {\n\t\t${t.trim()}\n\t} else {\n\t\t${f.trim()}\n\t}\n`;
       if (t) return `\tif (${expr}) {\n\t\t${t.trim()}\n\t}\n`;
       return `\tif (!(${expr})) {\n\t\t${f.trim()}\n\t}\n`;
@@ -238,7 +239,7 @@ function emitNode(n, gotoOr, errors) {
 
     default:
       errors.push(`${where}: tipo de nodo desconocido '${n.type}'`);
-      return '\t# tipo desconocido\n';
+      return '\t# tipo desconocido\n\treturn;\n';
   }
 }
 

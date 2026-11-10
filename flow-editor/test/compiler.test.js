@@ -114,6 +114,22 @@ test('condicion con una sola rama conectada', () => {
   assert.ok(r.cfg.includes('if (!($rU =~ "^00"))'));
 });
 
+test('nodos sin salidas conectadas emiten return; (Kamailio no admite bloques vacios)', () => {
+  const r = compile({
+    name: 'x',
+    nodes: [
+      { id: 's', type: 'start' },
+      { id: 'c', type: 'condition', subtype: 'header', params: { name: 'X-Test', value: '' } },
+    ],
+    edges: [{ from: 's', fromPort: 'out', to: 'c' }],
+  });
+  assert.deepStrictEqual(r.errors, []);
+  // la condicion no tiene ramas: su route[] debe contener una sentencia real
+  const bloque = r.cfg.match(/route\[FLOW_N_c\] \{([\s\S]*?)\}/);
+  assert.ok(bloque, 'falta el bloque del nodo c');
+  assert.ok(bloque[1].includes('return;'), 'el bloque quedaria vacio sin return;');
+});
+
 test('forward genera $du correcto con transporte tcp', () => {
   const r = compile({
     name: 'x',
