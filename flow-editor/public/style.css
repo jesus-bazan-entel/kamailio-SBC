@@ -167,6 +167,45 @@ main { display: flex; flex: 1; min-height: 0; }
 #props-actions button { width: 100%; margin-top: 8px; }
 #props-actions .danger { background: #7f1d1d; border-color: #7f1d1d; }
 
+/* ---------- resaltado de simulación ---------- */
+.node.sim-path { border-color: var(--green); box-shadow: 0 0 14px rgba(62, 207, 142, .55); }
+.node.sim-end { border-color: var(--orange); box-shadow: 0 0 16px rgba(255, 180, 84, .7); }
+#edges path.edge.sim-path {
+  stroke: var(--green) !important;
+  stroke-width: 4;
+  stroke-dasharray: 10 6;
+  animation: simflow 1s linear infinite;
+}
+@keyframes simflow { to { stroke-dashoffset: -16; } }
+
+/* ---------- panel de simulación ---------- */
+#sim-panel { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 8px; }
+#sim-panel textarea {
+  width: 100%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  padding: 6px;
+  resize: vertical;
+}
+#sim-panel button { width: 100%; margin-top: 6px; }
+#sim-result {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  display: none;
+}
+#sim-result.show { display: block; }
+#sim-result.r-dispatcher, #sim-result.r-forward { background: #103e2c; color: var(--green); }
+#sim-result.r-reject { background: #43141a; color: var(--red); }
+#sim-result.r-no_match { background: #4a3416; color: var(--orange); }
+#sim-steps { padding-left: 18px; font-size: 11px; color: var(--muted); }
+#sim-steps li { margin-bottom: 5px; line-height: 1.35; }
+#sim-steps li b { color: var(--text); }
+
 /* ---------- panel de llamadas ---------- */
 #calls-panel {
   height: 170px;
@@ -174,19 +213,25 @@ main { display: flex; flex: 1; min-height: 0; }
   border-top: 1px solid var(--border);
   padding: 6px 14px;
   overflow-y: auto;
+  display: flex;
+  gap: 24px;
 }
+.bottom-col { flex: 1; min-width: 0; }
+.state-activo { color: var(--green); }
+.state-inactivo, .state-deshabilitado { color: var(--red); }
+.state-probando { color: var(--orange); }
 .calls-header { display: flex; align-items: baseline; gap: 12px; }
 .calls-header h3 { margin: 4px 0; font-size: 13px; }
 .calls-hint { font-size: 11px; color: var(--muted); }
-#calls-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-#calls-table th {
+#calls-table, #gw-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+#calls-table th, #gw-table th {
   text-align: left;
   color: var(--muted);
   font-weight: 600;
   padding: 4px 8px;
   border-bottom: 1px solid var(--border);
 }
-#calls-table td { padding: 4px 8px; border-bottom: 1px solid var(--panel-2); }
+#calls-table td, #gw-table td { padding: 4px 8px; border-bottom: 1px solid var(--panel-2); }
 .muted { color: var(--muted); }
 .state-activa { color: var(--green); }
 .state-temprana, .state-iniciando, .state-confirmada { color: var(--orange); }

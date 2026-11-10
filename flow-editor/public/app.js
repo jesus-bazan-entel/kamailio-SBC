@@ -162,6 +162,7 @@ let selectedEdge = null;
 let dragging = null;     // { id, dx, dy }
 let connecting = null;   // { from, port }
 let dirty = false;
+let simHighlight = null; // { nodes:Set, edges:Set, end }
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('canvas');
@@ -204,7 +205,11 @@ function render() {
   for (const n of flow.nodes) {
     const def = defFor(n) || { icon: '❓', label: n.type, fields: [] };
     const el = document.createElement('div');
-    el.className = `node t-${n.type}` + (selectedNode === n.id ? ' selected' : '');
+    let simCls = '';
+    if (simHighlight && simHighlight.nodes.has(n.id)) {
+      simCls = simHighlight.end === n.id ? ' sim-end' : ' sim-path';
+    }
+    el.className = `node t-${n.type}` + (selectedNode === n.id ? ' selected' : '') + simCls;
     el.style.left = `${n.x}px`;
     el.style.top = `${n.y}px`;
     el.dataset.id = n.id;
@@ -276,9 +281,11 @@ function renderEdges() {
     if (!a || !b) return;
     const d = edgePath(a, b);
 
+    const edgeKey = `${e.from}::${e.fromPort || 'out'}::${e.to}`;
+    const simCls = simHighlight && simHighlight.edges.has(edgeKey) ? ' sim-path' : '';
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', d);
-    path.setAttribute('class', 'edge' + (selectedEdge === idx ? ' selected' : ''));
+    path.setAttribute('class', 'edge' + (selectedEdge === idx ? ' selected' : '') + simCls);
     path.setAttribute('stroke', EDGE_COLORS[e.fromPort || 'out'] || EDGE_COLORS.out);
     edgesEl.appendChild(path);
 
@@ -421,7 +428,17 @@ function addNode(def) {
   render();
 }
 
+function clearSimHighlight() {
+  if (!simHighlight) return;
+  simHighlight = null;
+  $('sim-result').className = '';
+  $('sim-result').textContent = '';
+  $('sim-steps').innerHTML = '';
+  render();
+}
+
 function deleteSelection() {
+  clearSimHighlight();
   if (selectedEdge != null) {
     flow.edges.splice(selectedEdge, 1);
     selectedEdge = null;
@@ -441,6 +458,7 @@ function deleteSelection() {
 
 function addEdge(from, fromPort, to) {
   if (from === to) return;
+  clearSimHighlight();
   // un solo cable por puerto de salida: reemplazar el existente
   flow.edges = flow.edges.filter((e) => !(e.from === from && (e.fromPort || 'out') === fromPort));
   flow.edges.push({ from, fromPort, to });
@@ -555,6 +573,7 @@ async function loadFlow(name) {
   flow.edges = flow.edges || [];
   selectedNode = null;
   selectedEdge = null;
+  simHighlight = null;
   clearDirty();
   render();
 }
@@ -644,6 +663,63 @@ $('modal').onclick = (ev) => { if (ev.target.id === 'modal') $('modal').classLis
   }
 })();
 
+// ---------- simulador de llamadas ----------
+
+$('btn-simulate').onclick = () => {
+  const panel = $('sim-panel');
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) {
+    $('sim-hour').value = new Date().getHours();
+  }
+};
+
+$('sim-clear').onclick = clearSimHighlight;
+
+$('sim-run').onclick = async () => {
+  const headers = {};
+  for (const line of $('sim-headers').value.split('\n')) {
+    const m = line.match(/^\s*([A-Za-z][A-Za-z0-9-]*)\s*:\s*(.*)$/);
+    if (m) headers[m[1]] = m[2];
+  }
+  const input = {
+    rU: $('sim-ru').value.trim(),
+    si: $('sim-si').value.trim(),
+    method: $('sim-method').value,
+    hour: Number($('sim-hour').value),
+    headers,
+  };
+  try {
+    const r = await api('POST', '/api/simulate', { flow, input });
+    if (r.errors && r.errors.length) {
+      toast(r.errors.join(' · '), 'error');
+      return;
+    }
+    simHighlight = {
+      nodes: new Set(r.steps.map((s) => s.nodeId)),
+      edges: new Set(r.edges.map((e) => `${e.from}::${e.fromPort}::${e.to}`)),
+      end: r.steps.length ? r.steps[r.steps.length - 1].nodeId : null,
+    };
+    const resEl = $('sim-result');
+    resEl.textContent = `${r.result.text}` +
+      (r.finalRequest.rU !== input.rU ? ` · destino final: "${r.finalRequest.rU}"` : '');
+    resEl.className = `show r-${r.result.kind}`;
+    const stepsEl = $('sim-steps');
+    stepsEl.innerHTML = '';
+    for (const s of r.steps) {
+      const li = document.createElement('li');
+      const node = nodeById(s.nodeId);
+      const b = document.createElement('b');
+      b.textContent = (node && node.label) || s.nodeId;
+      li.appendChild(b);
+      li.appendChild(document.createTextNode(` — ${s.detail.replace(/^[^:]*: /, '')}`));
+      stepsEl.appendChild(li);
+    }
+    render();
+  } catch (e) {
+    toast(`Error al simular: ${e.message}`, 'error');
+  }
+};
+
 // ---------- monitor de Kamailio ----------
 
 function fmtDuration(s) {
@@ -670,24 +746,47 @@ async function pollKamailio() {
     $('calls-count').textContent = data.online ? `(${data.calls.length})` : '';
     if (!data.online || !data.calls.length) {
       tbody.innerHTML = `<tr><td colspan="5" class="muted">${data.online ? 'no hay llamadas activas' : 'Kamailio no disponible'}</td></tr>`;
+    } else {
+      tbody.innerHTML = '';
+      for (const c of data.calls) {
+        const tr = document.createElement('tr');
+        for (const val of [c.callid, c.from, c.to]) {
+          const td = document.createElement('td');
+          td.textContent = val;
+          tr.appendChild(td);
+        }
+        const tdState = document.createElement('td');
+        tdState.textContent = c.state;
+        tdState.className = `state-${c.state}`;
+        tr.appendChild(tdState);
+        const tdDur = document.createElement('td');
+        tdDur.textContent = fmtDuration(c.duration);
+        tr.appendChild(tdDur);
+        tbody.appendChild(tr);
+      }
+    }
+  } catch {
+    $('kam-status').textContent = 'Kamailio: sin conexión';
+    $('kam-status').className = 'status offline';
+  }
+  try {
+    const gw = await api('GET', '/api/kamailio/dispatcher');
+    const gbody = $('gw-body');
+    if (!gw.online || !gw.gateways.length) {
+      gbody.innerHTML = `<tr><td colspan="4" class="muted">${gw.online ? 'sin destinos configurados' : 'Kamailio no disponible'}</td></tr>`;
       return;
     }
-    tbody.innerHTML = '';
-    for (const c of data.calls) {
+    gbody.innerHTML = '';
+    for (const g of gw.gateways) {
       const tr = document.createElement('tr');
-      for (const val of [c.callid, c.from, c.to]) {
+      const cells = [String(g.set ?? ''), g.uri, g.state, String(g.priority ?? '')];
+      cells.forEach((val, i) => {
         const td = document.createElement('td');
         td.textContent = val;
+        if (i === 2) td.className = `state-${g.state}`;
         tr.appendChild(td);
-      }
-      const tdState = document.createElement('td');
-      tdState.textContent = c.state;
-      tdState.className = `state-${c.state}`;
-      tr.appendChild(tdState);
-      const tdDur = document.createElement('td');
-      tdDur.textContent = fmtDuration(c.duration);
-      tr.appendChild(tdDur);
-      tbody.appendChild(tr);
+      });
+      gbody.appendChild(tr);
     }
   } catch {
     $('kam-status').textContent = 'Kamailio: sin conexión';

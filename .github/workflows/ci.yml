@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  pruebas-flow-editor:
+    name: Pruebas del compilador y simulador
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar dependencias
+        working-directory: flow-editor
+        run: npm install
+      - name: Ejecutar pruebas
+        working-directory: flow-editor
+        run: npm test
+
+  validar-config-kamailio:
+    name: Validar kamailio.cfg (kamailio -c)
+    runs-on: ubuntu-latest
+    container: debian:bookworm-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar Kamailio 5.8
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl gnupg
+          curl -fsSL https://deb.kamailio.org/kamailiodebkey.gpg \
+            | gpg --dearmor -o /usr/share/keyrings/kamailio.gpg
+          echo "deb [signed-by=/usr/share/keyrings/kamailio.gpg] http://deb.kamailio.org/kamailio58 bookworm main" \
+            > /etc/apt/sources.list.d/kamailio.list
+          apt-get update
+          apt-get install -y --no-install-recommends kamailio kamailio-extra-modules kamailio-json-modules
+      - name: Preparar configuración como en el contenedor
+        run: |
+          mkdir -p /etc/kamailio/flow /run/kamailio
+          cp kamailio/kamailio.cfg kamailio/kamailio-local.cfg kamailio/dispatcher.list /etc/kamailio/
+          cp kamailio/flow-routing.default.cfg /etc/kamailio/flow/flow-routing.cfg
+      - name: Validar sintaxis con kamailio -c
+        run: kamailio -c -f /etc/kamailio/kamailio.cfg
+      - name: Validar un flujo compilado por el editor
+        run: |
+          apt-get install -y --no-install-recommends nodejs
+          node -e "
+            const {compile} = require('./flow-editor/lib/compiler');
+            const flow = require('./flow-editor/flows/default.json');
+            const r = compile(flow);
+            if (r.errors.length) { console.error(r.errors); process.exit(1); }
+            require('fs').writeFileSync('/etc/kamailio/flow/flow-routing.cfg', r.cfg);
+          "
+          kamailio -c -f /etc/kamailio/kamailio.cfg

@@ -15,6 +15,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { compile } = require('./lib/compiler');
+const { simulate } = require('./lib/simulator');
 
 const PORT = Number(process.env.PORT || 8088);
 const FLOWS_DIR = process.env.FLOWS_DIR || path.join(__dirname, 'flows');
@@ -70,6 +71,13 @@ app.delete('/api/flows/:name', (req, res) => {
 app.post('/api/compile', (req, res) => {
   const result = compile(req.body);
   res.status(result.errors.length ? 422 : 200).json(result);
+});
+
+// Simula una llamada de prueba sobre un flujo (sin tocar Kamailio)
+app.post('/api/simulate', (req, res) => {
+  const { flow, input } = req.body || {};
+  const result = simulate(flow, input || {});
+  res.status(result.errors && result.errors.length ? 422 : 200).json(result);
 });
 
 app.post('/api/deploy/:name', (req, res) => {
@@ -143,9 +151,35 @@ app.get('/api/kamailio/calls', async (req, res) => {
 app.get('/api/kamailio/dispatcher', async (req, res) => {
   try {
     const result = await kamailioRpc('dispatcher.list');
-    res.json({ online: true, result });
+    // Estructura tipica: { RECORDS: [ { SET: { ID, TARGETS: [ { DEST: {...} } ] } } ] }
+    const gateways = [];
+    const records = result && result.RECORDS;
+    if (Array.isArray(records)) {
+      for (const rec of records) {
+        const set = rec.SET || {};
+        const targets = set.TARGETS || [];
+        for (const t of targets) {
+          const d = t.DEST || {};
+          const flags = String(d.FLAGS || '');
+          let state = 'desconocido';
+          if (flags.startsWith('A')) state = 'activo';
+          else if (flags.startsWith('I')) state = 'inactivo';
+          else if (flags.startsWith('T')) state = 'probando';
+          else if (flags.startsWith('D')) state = 'deshabilitado';
+          gateways.push({
+            set: set.ID,
+            uri: d.URI || '',
+            state,
+            flags,
+            priority: d.PRIORITY,
+            latency: d.LATENCY && d.LATENCY.AVG != null ? Math.round(d.LATENCY.AVG * 100) / 100 : null,
+          });
+        }
+      }
+    }
+    res.json({ online: true, gateways });
   } catch (e) {
-    res.json({ online: false, error: e.message });
+    res.json({ online: false, error: e.message, gateways: [] });
   }
 });
 

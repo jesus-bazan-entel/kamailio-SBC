@@ -15,6 +15,7 @@
       <button id="btn-new" title="Crear un flujo nuevo">＋ Nuevo</button>
       <button id="btn-save" class="primary" title="Guardar el flujo actual">💾 Guardar</button>
       <button id="btn-preview" title="Ver la configuración Kamailio generada">⚙ Ver config</button>
+      <button id="btn-simulate" title="Probar una llamada y ver su recorrido en el grafo">🧪 Probar llamada</button>
       <button id="btn-deploy" class="deploy" title="Compilar y aplicar en Kamailio">🚀 Desplegar</button>
     </div>
     <div id="kam-status" class="status offline">Kamailio: conectando…</div>
@@ -38,22 +39,69 @@
       <h3>Propiedades</h3>
       <div id="props-body" class="props-empty">Selecciona un nodo para editar sus parámetros.</div>
       <div id="props-actions"></div>
+
+      <div id="sim-panel" class="hidden">
+        <h3>🧪 Probar llamada</h3>
+        <div class="prop-field">
+          <label>Número destino ($rU)</label>
+          <input id="sim-ru" value="004930123456">
+        </div>
+        <div class="prop-field">
+          <label>IP de origen</label>
+          <input id="sim-si" value="10.0.0.5">
+        </div>
+        <div class="prop-field">
+          <label>Método</label>
+          <select id="sim-method">
+            <option>INVITE</option>
+            <option>MESSAGE</option>
+          </select>
+        </div>
+        <div class="prop-field">
+          <label>Hora del día (0-23)</label>
+          <input id="sim-hour" type="number" min="0" max="23">
+        </div>
+        <div class="prop-field">
+          <label>Cabeceras (Nombre: valor, una por línea)</label>
+          <textarea id="sim-headers" rows="2" placeholder="X-Cliente: vip"></textarea>
+        </div>
+        <button id="sim-run" class="primary">▶ Simular</button>
+        <button id="sim-clear">✕ Limpiar resaltado</button>
+        <div id="sim-result"></div>
+        <ol id="sim-steps"></ol>
+      </div>
     </aside>
   </main>
 
   <section id="calls-panel">
-    <div class="calls-header">
-      <h3>📞 Llamadas activas <span id="calls-count"></span></h3>
-      <span class="calls-hint">se actualiza cada 5 s vía RPC de Kamailio</span>
+    <div class="bottom-col">
+      <div class="calls-header">
+        <h3>📞 Llamadas activas <span id="calls-count"></span></h3>
+        <span class="calls-hint">se actualiza cada 5 s vía RPC de Kamailio</span>
+      </div>
+      <table id="calls-table">
+        <thead>
+          <tr><th>Call-ID</th><th>Origen</th><th>Destino</th><th>Estado</th><th>Duración</th></tr>
+        </thead>
+        <tbody id="calls-body">
+          <tr><td colspan="5" class="muted">sin datos</td></tr>
+        </tbody>
+      </table>
     </div>
-    <table id="calls-table">
-      <thead>
-        <tr><th>Call-ID</th><th>Origen</th><th>Destino</th><th>Estado</th><th>Duración</th></tr>
-      </thead>
-      <tbody id="calls-body">
-        <tr><td colspan="5" class="muted">sin datos</td></tr>
-      </tbody>
-    </table>
+    <div class="bottom-col">
+      <div class="calls-header">
+        <h3>⚖ Gateways (dispatcher)</h3>
+        <span class="calls-hint">estado del sondeo OPTIONS</span>
+      </div>
+      <table id="gw-table">
+        <thead>
+          <tr><th>Grupo</th><th>Destino</th><th>Estado</th><th>Prioridad</th></tr>
+        </thead>
+        <tbody id="gw-body">
+          <tr><td colspan="4" class="muted">sin datos</td></tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <div id="modal" class="hidden">

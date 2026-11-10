@@ -81,11 +81,29 @@ El nodo **Balanceador** usa los grupos definidos en
 5xx, reintenta con el siguiente destino del grupo vía
 `failure_route[FLOW_DISPATCH_FAILOVER]`).
 
-## Monitoreo de llamadas
+## Simulador de llamadas 🧪
 
-El panel inferior del editor consulta cada 5 s el RPC de Kamailio
-(`dlg.list` del módulo **dialog**) y muestra las llamadas en curso:
-origen, destino, estado (temprana / activa / finalizando) y duración.
+El botón **"🧪 Probar llamada"** abre un panel donde ingresas un número
+destino, IP de origen, método, hora y cabeceras de prueba. Al simular:
+
+- El **camino que tomaría la llamada se ilumina en el grafo** (nodos en
+  verde, conexiones animadas, nodo final en naranja).
+- Se muestra el **detalle paso a paso** de cada decisión ("¿empieza por
+  00? → SÍ", "quitar 2 dígitos: 0049… → 49…") y el resultado final
+  (balanceada, reenviada, rechazada o 404 sin ruta).
+- La simulación replica exactamente la semántica del compilador, sin
+  tocar Kamailio, así puedes verificar la lógica **antes de desplegar**.
+
+## Monitoreo en vivo
+
+El panel inferior consulta cada 5 s el RPC de Kamailio y muestra:
+
+- **Llamadas activas** (`dlg.list` del módulo dialog): origen, destino,
+  estado (temprana / activa / finalizando) y duración.
+- **Gateways del dispatcher** (`dispatcher.list`): estado de cada
+  destino según el sondeo OPTIONS (activo / probando / inactivo) con su
+  grupo y prioridad.
+
 La barra superior indica si Kamailio está en línea y su uptime.
 
 ## Optimizaciones incluidas en `kamailio.cfg`
@@ -117,8 +135,9 @@ La barra superior indica si Kamailio está en línea y su uptime.
 └── flow-editor/
     ├── server.js                   # API REST + proxy RPC + despliegue
     ├── lib/compiler.js             # compilador grafo → rutas Kamailio
+    ├── lib/simulator.js            # simulador de llamadas sobre el grafo
     ├── flows/default.json          # flujo de ejemplo
-    ├── test/compiler.test.js       # pruebas del compilador (npm test)
+    ├── test/                       # pruebas de compilador y simulador (npm test)
     └── public/                     # editor visual (HTML/CSS/JS sin frameworks)
 ```
 
